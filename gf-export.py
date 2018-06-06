@@ -187,6 +187,7 @@ except IOError:
 divs = robinhood.get_endpoint('dividends')
 with open("testdivs.txt", "w+") as outfile:
     outfile.write(str(divs))
+
 class dividendClass:
     rate = ""    
     shares = ""
