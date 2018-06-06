@@ -180,6 +180,117 @@ try:
         outfile.write(csv)
 except IOError:
     print("Oops.  Unable to write file to ",filename)
+    print("(maybe it's already open)")
+
+########## Following code added by https://github.com/davidodza to include Dividends #############
+
+divs = robinhood.get_endpoint('dividends')
+with open("testdivs.txt", "w+") as outfile:
+    outfile.write(str(divs))
+class dividendClass:
+    rate = ""    
+    shares = ""
+    #paidAmt = int(rate)*int(shares) #needs work
+    payDate = ""
+    
+    def __init__(self, rate, shares, payDate):
+            self.rate = rate
+            self.shares = shares
+            self.payDate = payDate
+    def csvOut(self):
+            return str(self.payDate + "," + self.rate + "," + self.shares + "," + str(float(self.rate)*float(self.shares)) + "\n")
+
+divs = str(divs).replace("'","").replace(",","")
+divs = str(divs).replace("position","\nposition").replace("rate","\nrate").replace("payable_date","\npayable_date")
+with open("testdivs.txt", "w+") as outfile:
+    outfile.write(str(divs))
+
+regexs=[':(.*) ',
+':(.*)} {account',
+':(.*)} {record_date',
+':(.*)} {id:',
+':(.*)} {url',
+':(.*)} {amount',
+':(.*)} {withholding',
+':(.*)} {paid_at',
+':(.*)} {instrument',
+':(.*) ',
+':(.*) account',
+':(.*) record_date',
+':(.*) id:',
+':(.*) url',
+':(.*) amount',
+':(.*) withholding',
+':(.*) paid_at',
+':(.*) instrument',
+':(.*)}] previous',
+':(.*)}]}']
+
+attributes=['rate','position','payable_date']
+
+rates,ratesfinal,ratesfinalnodups = ([] for i in range(3))
+positions, positionsfinal, positionsfinalnodups = ([] for i in range(3))
+dates, datesfinal, datesfinalnodups = ([] for i in range(3))
+
+f=open('testdivs.txt','r')
+for line in f:
+    for attr in attributes:
+        for regex in regexs:
+            value = re.compile(attr + regex)         
+            for item in value.findall(line):
+                if attr == 'rate':
+                    rates.append(item)
+                if attr == 'position':
+                    positions.append(item)
+                if attr == 'payable_date':
+                    dates.append(item)
+
+#Remove regex garbage from results
+datesfinal = [s for s in dates if (len(str(s)) < 16 and len(str(s)) > 3)]
+ratesfinal = [s for s in rates if (len(str(s)) < 17 and len(str(s)) > 10)]
+positionsfinal = [s for s in positions if (len(str(s)) < 10 and len(str(s)) > 3)]
+
+#Remove duplicates from rates if necessary
+for item in ratesfinal:
+    item = item.replace(" ", "")
+    if item not in ratesfinalnodups:
+        ratesfinalnodups.append(item)
+    
+#Remove duplicates from positions if necessary
+for item in positionsfinal:
+    item = item.replace(" ", "")
+    if item not in positionsfinalnodups:
+        positionsfinalnodups.append(item)
+
+#Remove duplicates from dates if necessary
+for item in datesfinal:
+    item = item.replace(" ", "").replace("}", "")
+    datesfinalnodups.append(item) 
+
+if len(datesfinal) == len(ratesfinalnodups)*2:
+    datesfinalnodups = [i for a, i in enumerate(datesfinal) if a%2 == 0]
+
+    
+print ("------------")
+print (ratesfinalnodups)
+print (positionsfinalnodups)
+print (datesfinalnodups)
+
+divList = []
+for i in range(len(ratesfinalnodups)):
+    newDiv = dividendClass(ratesfinalnodups[i],positionsfinalnodups[i],datesfinalnodups[i])
+    divList.append(newDiv)
+    
+for div in divList:
+    print(div.csvOut())
+# save the CSV
+try:
+    with open("dividends.csv", "w+") as outfile:
+        outfile.write("Date,Rate,Shares,Total Earned\n")
+        for div in divList:
+            outfile.write(div.csvOut())
+except IOError:
+    print("Oops.  Unable to write file to dividends.csv (maybe it's already open)")   
 
 
 
